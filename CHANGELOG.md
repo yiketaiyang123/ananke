@@ -292,6 +292,28 @@
 - **最终注入指令迭代**：`DEFAULT_FINAL_DIRECTIVE` 改为「由辅助创作系统提供的创作建议和素材，必须纳入你的创作之中…」（去掉旧「记忆索引与情节走向参考」残留）；新增 `PREV_FINAL_DIRECTIVE` 迁移，旧指令自动升级
 - **注入美化 v2 兼容**：`命运织机-注入美化-v2.json` 新增板块分类配色（边界=红 / 世界反应·事件·变化=蓝 / 命运干涉=紫 / 事件调度·任务钩子·结局·阶段指导·探索指引·场景约束=金）+ 键值分类（可透露=绿 / 不可透露·必须隐藏=红）
 
+### v1.9.8（世界摘要瘦身 + 插件开关/重置/摘要初始化）
+
+**一、Task 1A 世界摘要字数收敛（`prompts/task1_5-world.js`）**
+- 世界全景：800-1500 字 → **500-800 字**（超大型设定封顶 2000 → 1200）
+- 新增硬性约束「能一笔带过的就一笔带过，不展开细节」，避免单个条目把摘要撑爆
+- 实力体系：战力 / 地位 / 突破条件 **各一句话**
+- 核心矛盾：只写「本质 + 涉及势力 + 当前状态」**两三句话**
+- 极简设定兜底：400-600 字 → **300-500 字**
+- 目的：修复摘要过长挤压主 AI 上下文、且部分条目啰嗦到挤掉后续条目的问题
+
+**二、插件侧三个缺口补齐**
+
+| 功能 | 位置 | 说明 |
+|---|---|---|
+| 总开关（激活/关闭） | `src/ui/modal.js` 标题栏 `#fw-toggle-enabled` | 一键暂停/恢复插件全部拦截与注入；关闭时 `onBeforeGeneration` 与 `TavernHelper.generate` 钩子直接放行，不影响正常聊天 |
+| 重置插件数据 | `src/ui/modal.js` 标题栏 `#fw-reset-chat` | 二次确认后清空当前聊天的全部插件存档（`chatMetadata.extensions['fate-weaver']`），面板即时刷新 |
+| 摘要初始化 | `src/ui/panel-outline.js` `#fw-outline-summary` | 空状态与工具栏各一个「初始化摘要」按钮，只跑 Task 1A，不必再走整轮大纲初始化 |
+
+- `src/settings.js`：`DEFAULT_SETTINGS` 新增 `enabled: true`（全局开关默认开启）
+- `src/scheduler.js`：`onBeforeGeneration` 与 `TH.generate` 钩子首行判断 `getSettings().enabled`，关闭即 `return` / 原样放行
+- `style.css`：新增 `.fw-header-actions`（标题栏按钮组，靠右、窄屏自动换行）
+- 版本号 1.9.7 → 1.9.8（settings + manifest）**用于触发 `ensureDefaultSettings` 刷新已保存的 `prompt_blocks`**——否则上面世界摘要的字数优化对老用户不生效
 
 
 
