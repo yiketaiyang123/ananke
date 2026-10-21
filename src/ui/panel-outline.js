@@ -168,7 +168,10 @@ function buildHtml() {
     if (!outline) {
         return `<div class="fw-panel">
             ${emptyState('尚未生成大纲。可在下方点击「初始化大纲」，或让对话进行以自动生成。')}
-            <div class="fw-toolbar"><button class="fw-btn" id="fw-outline-rewrite">初始化大纲</button></div>
+            <div class="fw-toolbar">
+                <button class="fw-btn" id="fw-outline-rewrite">初始化大纲</button>
+                <button class="fw-btn" id="fw-outline-summary">初始化摘要</button>
+            </div>
         </div>`;
     }
 
@@ -229,6 +232,7 @@ function buildHtml() {
 
                         <div class="fw-toolbar">
                             <button class="fw-btn" id="fw-outline-rewrite">初始化大纲</button>
+                            <button class="fw-btn" id="fw-outline-summary">初始化摘要</button>
                             <button class="fw-btn" id="fw-outline-export">导出大纲</button>
                             <button class="fw-btn" id="fw-outline-import">导入大纲</button>
                         </div>
@@ -390,6 +394,17 @@ function bind(container) {
             rewrite.disabled = true;
             triggerTaskNow('task1');
             toastSuccess('已请求初始化大纲，生成中…');
+        }
+    });
+
+    // 初始化摘要（重新生成世界摘要；摘要经常截断时可用它单独重跑）
+    const summaryBtn = container.querySelector('#fw-outline-summary');
+    if (summaryBtn) summaryBtn.addEventListener('click', () => {
+        if (confirm('确定要重新生成世界摘要吗？（覆盖当前摘要，可能较耗时）')) {
+            summaryBtn.textContent = '⏳ 生成中...';
+            summaryBtn.disabled = true;
+            triggerTaskNow('task1_5');
+            toastSuccess('已请求初始化摘要，生成中…');
         }
     });
 
