@@ -57,7 +57,8 @@ function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, e
 }
 
 export const DEFAULT_SETTINGS = {
-    version: '1.9.7',
+    version: '1.9.8',
+    enabled: true,            // 插件总开关（激活/关闭，全局）
     global_api: { mode: 'inherit', url: '', key: '', model: '' },
     apiPresets: [],          // API 预设快照 [{id,name,url,key,model}]
     apiPresetActiveId: '',   // 当前选中的预设 id（UI 回显用）
