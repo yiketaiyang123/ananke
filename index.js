@@ -11,7 +11,7 @@ import { openModal, isOpen, refreshActivePanel, injectWandEntry, injectFab } fro
 import { initScheduler, onTaskDone } from './src/scheduler.js';
 import { getEventSource, getEventTypes, getRegisterSlashCommand } from './src/runtime.js';
 
-const VERSION = '1.9.2';
+const VERSION = '1.9.8';
 const MODULE_NAME = '命运编织者 · Ananke';
 
 function init() {
