@@ -132,6 +132,7 @@ function writeTextarea(text) {
 async function onBeforeGeneration(type, params, dryRun) {
     if (dryRun || params?._ananke_processed || running) return;
     if (type === 'regenerate' || type === 'impersonate' || type === 'quiet' || type === 'summary') return;
+    if (!getSettings().enabled) return; // 插件总开关关闭
 
     // 用户输入：优先 chat 最后一条用户消息；否则读输入框 / params.prompt（正常发送时用户消息可能尚未进 chat）
     const chat = getChat();
@@ -184,6 +185,7 @@ function tryInstallTavernHelperHook() {
     TH.generate = async function (...args) {
         const options = args[0] || {};
         if (options.quiet_prompt || options.automatic_trigger) return original.apply(this, args);
+        if (!getSettings().enabled) return original.apply(this, args); // 插件总开关关闭
         // 用户输入：user_input → prompt → injects[0].content（对齐 shujuku：injects 存在时优先）
         let userInput = String(options.user_input || options.prompt || '').trim();
         if (options.injects && options.injects[0] && options.injects[0].content) {
