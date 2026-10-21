@@ -340,3 +340,30 @@
 - 楼层回退（`checkRollback`）时清空 `pending_signals`，避免基于过期楼层生成
 - 涉及文件：`src/scheduler.js`（validateStructure / generateWithRetry / interceptAndPlan / onGenerationEnded / processPendingSignals / lastAiReplyText / buildMissionContext / buildLocationContext / runTask4BySignal / runTask25BySignal / checkRollback）、`src/store.js`（`pending_signals`）、`src/ui/panel-config.js`（重试次数标签）
 - 版本号 1.9.8 → 1.9.9（settings + manifest）
+### v1.9.10（结构校验对齐解析器 + 思维链与输出隔离）
+
+**一、修复 Task 4 / Task 2.5 结构校验永远不通过（`src/scheduler.js`）**
+
+- **根因**：解析器的 `ensureStoreTag` 在缺少 `<store>` 时**会自动把正文包一层**，而 v1.9.9 新增的 `validateStructure` 却硬性要求字面 `<store>` 标签——两者打架，导致 2B / 2C 输出永远判失败、陷入重试。
+- **修复**：`validateStructure` 改为与解析器行为一致
+  - 不再因为「缺 `<store>` 字面标签」判错（解析器会自动包裹）
+  - 新增 `stripThoughtForCheck`：**只校验思维链之后的正式输出**（思维链里提到的 `<store>` 不算数）
+  - 仍然拦截真正的错误：空输出 / 只有思维链没有输出 / `<store>` 开了没闭（截断）/ `<store>` 内容为空 / 缺注入标签（`<supplement>`、`<map_inject>`）
+  - 无 `<store>` 时要求正文 ≥ 40 字符，避免空壳
+
+**二、思维链与输出部分隔离（全部 6 个提示词）**
+
+- 各提示词「输出格式」开头统一改为**分段声明**（顺序固定、缺一不可）：
+  - 2A：`<thought>` → `<store>` → `<supplement>`
+  - 2B：`<thought>` → `<store>`
+  - 2C：`<thought>` → `<store>` → `<map_inject>`
+  - 1A / 1B：`<thought>` → `<store>`
+  - 3 ：`<thought>` → `<store>`（→ `<fate_inject>`，仅出牌时）
+- 统一硬约束：「**思维链必须在 `</thought>` 处完全结束；JSON 写进 `<store>`，注入写进对应标签，都不要写进 `<thought>`**」
+- 修复 few-shot 示例**只演示思维链、从不演示正式输出**的问题（"思维链时有时无"的主因）：为 2B / 2C / 3 / 1B / 1A 补上完整 `<store>` 示例（2C 含 `<map_inject>`、3 含 `<fate_inject>`），让模型照着抄「thought → 输出」的完整结构
+
+**三、顺带修掉两处非法 JSON 示例（模型会学坏）**
+
+- `prompts/task1_5-world.js` 的 `历法` 字段、`prompts/task4-mission.js` 的 `事件安排` 字段：内层双引号在模板字面量里被剥离转义变成裸引号 → 改用「」
+- 新增校验：6 个提示词内共 11 个 JSON 示例全部通过 `JSON.parse`，且无 `{{占位符}}` 残留
+- 版本号 1.9.9 → 1.9.10

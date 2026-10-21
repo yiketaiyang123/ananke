@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 命运编织者 · Ananke — 全局配置
  * 存于 extension_settings['fate-weaver']，跨聊天共享。
  */
@@ -57,7 +57,7 @@ function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, e
 }
 
 export const DEFAULT_SETTINGS = {
-    version: '1.9.9',
+    version: '1.9.10',
     enabled: true,            // 插件总开关（激活/关闭，全局）
     global_api: { mode: 'inherit', url: '', key: '', model: '' },
     apiPresets: [],          // API 预设快照 [{id,name,url,key,model}]

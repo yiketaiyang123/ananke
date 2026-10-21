@@ -883,28 +883,49 @@ function taskLabel(task) {
     return TASK_LABEL[task.id] || task.name || '任务';
 }
 
+/** 剔除思维链（结构校验时不应把 thought 里提到的标签算数） */
+function stripThoughtForCheck(text) {
+    return String(text || '')
+        .replace(/<thought\b[^>]*>[\s\S]*?<\/thought>/gi, '')
+        .replace(/<thought\b[^>]*>[\s\S]*$/gi, ''); // 未闭合 thought 兜底剔除
+}
+
 /**
- * 校验输出「标签 / 结构」是否完整：截断、漏标签、未闭合。
+ * 校验输出「标签 / 结构」是否完整。
+ *
+ * 重要：解析器的 ensureStoreTag 会在缺少 <store> 时自动把「思维链之后、注入标签之前」的正文
+ * 包一层 <store>，所以「缺 <store> 字面标签」本身不算结构错误（否则会和解析器打架，
+ * 导致 Task 4 / Task 2.5 永远过不了校验）。
+ * 真正要拦截的是：空输出、思维链之后没内容、标签开了没闭（截断）、标签内容为空、缺注入标签。
+ *
  * @returns {string|null} null = 通过；否则返回错误描述
  */
 function validateStructure(task, output) {
     const text = String(output || '');
     if (!text.trim()) return '输出为空';
 
-    // ① 存储标签
+    const body = stripThoughtForCheck(text); // 只看思维链之后的正式输出
+    if (!body.trim()) return '只有思维链，缺少正式输出';
+
     const storeTag = String(task.storeTags || 'store').split(/[,，]/)[0].trim() || 'store';
     const openRe = new RegExp(`<${storeTag}\\b[^>]*>`, 'i');
     const fullRe = new RegExp(`<${storeTag}\\b[^>]*>([\\s\\S]*?)<\\/${storeTag}>`, 'i');
-    if (!openRe.test(text)) return `缺少 <${storeTag}> 标签`;
-    const m = text.match(fullRe);
-    if (!m) return `<${storeTag}> 未闭合（疑似被截断）`;
-    if (!m[1].trim()) return `<${storeTag}> 内容为空`;
 
-    // ② 注入标签（摘取后注入主 AI）。Task 3 的 fate_inject 仅出牌时出现，不作硬性要求
+    if (openRe.test(body)) {
+        // 写了开标签 → 必须闭合（否则是截断）且内容非空
+        const m = body.match(fullRe);
+        if (!m) return `<${storeTag}> 未闭合（疑似被截断）`;
+        if (!m[1].trim()) return `<${storeTag}> 内容为空`;
+    } else if (body.trim().length < 40) {
+        // 没写 <store>（解析器会自动包裹）→ 只要求正文有一定体量，避免空壳
+        return '正式输出过短（疑似截断）';
+    }
+
+    // 注入标签（摘取后注入主 AI）。Task 3 的 fate_inject 仅出牌时出现，不作硬性要求
     if (task.id !== 'task3' && task.extractTags) {
         const tags = String(task.extractTags).split(/[,，]/).map((s) => s.trim()).filter(Boolean);
         for (const t of tags) {
-            if (!new RegExp(`<${t}\\b[^>]*>[\\s\\S]*?<\\/${t}>`, 'i').test(text)) {
+            if (!new RegExp(`<${t}\\b[^>]*>[\\s\\S]*?<\\/${t}>`, 'i').test(body)) {
                 return `缺少 <${t}> 标签`;
             }
         }
