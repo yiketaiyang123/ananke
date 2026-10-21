@@ -3,7 +3,9 @@
  * 打开：/ananke；关闭：× / 遮罩 / ESC
  */
 import { renderPanel } from './panels.js';
-import { DEFAULT_SETTINGS } from '../settings.js';
+import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../settings.js';
+import { resetStore } from '../store.js';
+import { toastSuccess } from './toast.js';
 
 const PANELS = [
     { id: 'outline', icon: '📖', label: '大纲&伏笔', short: '大纲' },
@@ -56,7 +58,11 @@ function buildModal() {
                 <div class="fw-title-row">
                     <span class="fw-title">命运编织者</span>
                     <span class="fw-version">v${DEFAULT_SETTINGS.version}</span>
-                    <button class="fw-close" title="关闭">×</button>
+                    <div class="fw-header-actions">
+                        <button class="fw-btn fw-btn-mini" id="fw-toggle-enabled" title="激活/关闭插件">⚡ 运行中</button>
+                        <button class="fw-btn fw-btn-mini fw-btn-danger" id="fw-reset-chat" title="重置当前聊天插件数据">重置数据</button>
+                        <button class="fw-close" title="关闭">×</button>
+                    </div>
                 </div>
             </div>
             <div class="fw-body">
@@ -75,6 +81,34 @@ function buildModal() {
     overlay.querySelectorAll('.fw-tab').forEach((btn) => {
         btn.addEventListener('click', () => switchPanel(btn.dataset.panel));
     });
+
+    // 激活 / 关闭（全局总开关）
+    const toggleBtn = overlay.querySelector('#fw-toggle-enabled');
+    const syncToggle = () => {
+        const on = getSettings().enabled !== false;
+        toggleBtn.textContent = on ? '⚡ 运行中' : '⏸ 已关闭';
+        toggleBtn.classList.toggle('fw-btn-danger', !on);
+    };
+    if (toggleBtn) {
+        syncToggle();
+        toggleBtn.addEventListener('click', () => {
+            const s = getSettings();
+            s.enabled = s.enabled === false; // 关闭中→开启；开启中→关闭
+            saveSettings();
+            syncToggle();
+            toastSuccess(s.enabled === false ? '⏸ 插件已关闭' : '⚡ 插件已激活');
+        });
+    }
+
+    // 重置当前聊天插件数据
+    const resetBtn = overlay.querySelector('#fw-reset-chat');
+    if (resetBtn) resetBtn.addEventListener('click', () => {
+        if (!confirm('确定要重置当前聊天的所有插件数据吗？\n（大纲、摘要、任务链、地图、伏笔、命运牌、日志等全部清空，不可撤销）')) return;
+        resetStore();
+        toastSuccess('✅ 已重置当前聊天插件数据');
+        switchPanel(activePanel);
+    });
+
     return overlay;
 }
 
