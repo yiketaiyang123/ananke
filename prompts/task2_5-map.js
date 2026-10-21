@@ -257,7 +257,7 @@ export const TASK2_5_DEFAULT_PROMPTS = [
 
 输出两部分：完整蓝图存于暗处，战争迷雾呈于前台。
 离开后地图保留，返回时不重新生成。
-严格使用统一标记体系。
+输出分三部分：<thought> 推理 + <store>（JSON 对象）+ <map_inject>（prose 标记）。
 
 迷宫构筑者已就绪。请下达铸造指令。`,
     },
