@@ -37,6 +37,10 @@ function defaultStore() {
         task_chain: null,         // { raw, id, name, status, currentNode }
         last_result: null,        // 上一任务完成信息 { name, 结局, 即时后果 }（S4 写入，冷却期面板显示）
 
+        // 2A 发出、待本轮主 AI 回复后再执行的调度信号（延后生成，衔接更自然）
+        // [{ type: 'MISSION_GEN'|'MAP_GEN', params: {...} }]，由 onGenerationEnded 消费
+        pending_signals: [],
+
         // Task 2.5 产出：封闭地图（结构化 + raw）
         map: null,                // { raw, type: 'closed', name, 当前位置 }（进入后长期保留，供玩家返回时读取）
 

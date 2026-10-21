@@ -318,3 +318,25 @@
 
 
 
+
+### v1.9.9（截断重发 + 任务链/地图延后生成）
+
+**一、标签 / 结构错误自动重发（`src/scheduler.js`）**
+
+- 新增 `validateStructure(task, output)`：检查 `<store>` 是否存在、是否闭合、内容是否为空；并按任务的「标签摘取」配置校验注入标签（`<supplement>` / `<map_inject>`；Task 3 的 `<fate_inject>` 仅出牌时出现，不作硬性要求）
+- `generateWithRetry` 在原有「回复过短」检查之外新增「结构错误」检查：截断、漏标签、未闭合都会触发重发
+- **可见提示**：日志 + 顶部 toast，例如 `⚠️ 剧情引擎错误，正在重新生成…（第 1 次）`；重试用尽后提示 `重试 N 次仍未成功，本轮已跳过`
+- 重试次数沿用每个任务已有的 `maxRetries`（面板四「最大尝试次数（含截断/漏标签时的重发）」，按任务可调）
+- 新增任务友好名映射 `TASK_LABEL`：世界摘要 / 阶段规划 / 剧情引擎 / 任务链生成 / 地图生成 / 命运牌
+
+**二、任务链 / 地图改为「本轮回复后」生成（`src/scheduler.js` + `src/store.js`）**
+
+- 2A 发出 `MISSION_GEN` / `MAP_GEN` 后**不再立即调用 2B / 2C**，而是把信号入队到 `store.pending_signals`（日志记 `⏳ 已登记待生成：任务链（本轮回复完成后生成）`）
+- 本轮主 AI 回复完成（`GENERATION_ENDED`）后由 `processPendingSignals()` 消费队列：
+  - 读取本轮主 AI 实际回复正文（`lastAiReplyText`，剔除 `<thought>`，超长截断 2000 字）
+  - 把该正文作为「本轮已发生的剧情」附进 `mission_context` / `location_context`，要求新生成的任务链 / 地图与之衔接、不得矛盾
+  - 生成结果写入 `task_chain` / `map`，供**下一轮** 2A 读取并注入
+- 生成期间显示「✦ 命运女神正在根据本轮剧情编织后续…」全局提示
+- 楼层回退（`checkRollback`）时清空 `pending_signals`，避免基于过期楼层生成
+- 涉及文件：`src/scheduler.js`（validateStructure / generateWithRetry / interceptAndPlan / onGenerationEnded / processPendingSignals / lastAiReplyText / buildMissionContext / buildLocationContext / runTask4BySignal / runTask25BySignal / checkRollback）、`src/store.js`（`pending_signals`）、`src/ui/panel-config.js`（重试次数标签）
+- 版本号 1.9.8 → 1.9.9（settings + manifest）
