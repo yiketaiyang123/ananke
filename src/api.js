@@ -58,7 +58,7 @@ export async function testConnection(url, key) {
  * 调用 OpenAI 兼容 /chat/completions（经 ST 代理）。
  * @returns {Promise<string>} 生成的正文
  */
-export async function chatCompletion({ url, key, model, messages, temperature = 0.9, maxTokens = 8000, stream = false, timeoutMs = 180000 }) {
+export async function chatCompletion({ url, key, model, messages, temperature = 0.9, maxTokens = 8000, stream = false, timeoutMs = 180000, thinking }) {
     const body = {
         chat_completion_source: 'openai',
         reverse_proxy: normalizeApiUrl(url),
@@ -71,6 +71,9 @@ export async function chatCompletion({ url, key, model, messages, temperature = 
         presence_penalty: 0,
         frequency_penalty: 0,
     };
+    // 思考开关（火山引擎等支持 thinking.type：enabled/disabled/auto）。
+    // 结构化任务关闭思考：否则 reasoning token 会吃掉大半输出预算，耗时也会成倍增加。
+    if (thinking) body.thinking = thinking;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));

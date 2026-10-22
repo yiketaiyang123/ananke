@@ -246,13 +246,19 @@ async function collectVariables(task, extraVars = {}) {
 /** 组装 messages 数组（system/user 分离，供 chatCompletion 使用）；extraVars 为额外占位符 */
 export async function buildMessagesForTask(task, extraVars = {}) {
     const vars = await collectVariables(task, extraVars);
-    return (task.prompt_blocks || []).map((b) => {
+    const messages = (task.prompt_blocks || []).map((b) => {
         let content = b.content || '';
         for (const [k, v] of Object.entries(vars)) {
             content = content.split(k).join(v);
         }
         return { role: b.role || 'user', content };
     });
+    // 兼容不支持 assistant prefill 的服务（如火山引擎豆包）：最后一条若是 assistant，
+    // 服务端会直接返回空内容（finish_reason=stop、content=""），因此补一条 user 指令。
+    if (messages.length && messages[messages.length - 1].role === 'assistant') {
+        messages.push({ role: 'user', content: '现在开始执行。' });
+    }
+    return messages;
 }
 
 /** 组装完整提示词（纯文本，调试用） */

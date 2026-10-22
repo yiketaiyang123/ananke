@@ -21,6 +21,8 @@ const TASK_COOLDOWN = 3; // 任务链完成后的冷却（游戏日）；插件�
 const TASK_INTERVAL = 1000; // 任务之间的发送间隔（毫秒），避免连续 API 调用限流报错
 // 各任务温度：结构化输出（解析/调度/编剧/地图）用低温度稳定格式，减少漏标签；命运牌偏创作保持高温度
 const TASK_TEMPERATURE = { task1: 0.4, task1_5: 0.4, task2: 0.4, task4: 0.4, task2_5: 0.4, task3: 0.9 };
+// 各任务思考开关：结构化任务关闭（否则 reasoning token 吃掉输出预算、耗时成倍），命运牌保留自动
+const TASK_THINKING = { task1: 'disabled', task1_5: 'disabled', task2: 'disabled', task4: 'disabled', task2_5: 'disabled', task3: 'auto' };
 // 任务友好名（用于重试提示，如「剧情引擎错误，正在重新生成…」）
 const TASK_LABEL = {
     task1_5: '世界摘要',
@@ -939,7 +941,11 @@ async function generateWithRetry(task, messages) {
     let lastErr = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            const out = await quietGenerate(messages, `ananke-${task.id}`, { temperature: TASK_TEMPERATURE[task.id] ?? 0.4 });
+            const think = TASK_THINKING[task.id];
+            const out = await quietGenerate(messages, `ananke-${task.id}`, {
+                temperature: TASK_TEMPERATURE[task.id] ?? 0.4,
+                thinking: think ? { type: think } : undefined,
+            });
 
             // ① 过短
             if (minLen > 0 && out.length < minLen) {

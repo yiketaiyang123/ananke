@@ -32,5 +32,6 @@ export async function quietGenerate(messages, label = 'ananke', options = {}) {
         temperature: options.temperature ?? 0.9,
         maxTokens: options.maxTokens ?? 8000,
         timeoutMs: options.timeoutMs ?? 180000,
+        thinking: options.thinking,
     });
 }
