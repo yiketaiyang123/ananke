@@ -5,13 +5,14 @@
  * 前置拦截（参考 shujuku）：GENERATION_AFTER_COMMANDS 的 async 回调里
  * await 剧情 AI，结果写回 params.prompt，实现「没注入就不发主 AI」。
  */
-import { ensureDefaultSettings } from './src/settings.js';
+import { ensureDefaultSettings, DEFAULT_SETTINGS } from './src/settings.js';
 import { logInfo } from './src/logger.js';
 import { openModal, isOpen, refreshActivePanel, injectWandEntry, injectFab } from './src/ui/modal.js';
 import { initScheduler, onTaskDone } from './src/scheduler.js';
 import { getEventSource, getEventTypes, getRegisterSlashCommand } from './src/runtime.js';
 
-const VERSION = '1.9.8';
+// 版本号从 settings 读取，避免与 manifest/settings 不一致（原先硬编码导致日志一直显示旧版本）
+const VERSION = DEFAULT_SETTINGS.version;
 const MODULE_NAME = '命运编织者 · Ananke';
 
 function init() {
