@@ -52,7 +52,7 @@ function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, e
         maxRetries: 3,
         extractTags: extractTags || '',   // 已内置，保留兼容
         storeTags: storeTags || 'store',  // 标签写入（储存）
-        include_tag: '',                  // 正文提取标签（留空 = 全文）
+        include_tag: 'content,gametxt',   // 正文提取标签（默认认 content / gametxt；留空 = 发全文）
         exclude_tags: DEFAULT_EXCLUDE_TAGS, // 排除标签（提取后再剔除）
         order: order || 1,        // 调取顺序：同值并行、不同值按升序顺序
         prompt_blocks: [],        // 对话块数组 [{ role: 'system'|'user'|'assistant', content: '' }]
@@ -60,7 +60,7 @@ function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, e
 }
 
 export const DEFAULT_SETTINGS = {
-    version: '1.10.6',
+    version: '1.10.7',
     enabled: true,            // 插件总开关（激活/关闭，全局）
     global_api: { mode: 'inherit', url: '', key: '', model: '' },
     apiPresets: [],          // API 预设快照 [{id,name,url,key,model}]
@@ -150,6 +150,14 @@ export function ensureDefaultSettings() {
             for (const id of ['task4', 'task2_5']) {
                 const t = s.tasks.find((x) => x.id === id);
                 if (t && Number(t.historyTurns) === 6) t.historyTurns = 1;
+            }
+        }
+        // v1.10.7：正文提取标签默认启用 content / gametxt（只在未设置或为空时补，用户自定义的不动）
+        if (String(s.version) === '1.10.6') {
+            for (const t of s.tasks) {
+                if (t.include_tag === undefined || String(t.include_tag).trim() === '') {
+                    t.include_tag = 'content,gametxt';
+                }
             }
         }
         s.version = DEFAULT_SETTINGS.version;

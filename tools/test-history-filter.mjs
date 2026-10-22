@@ -46,6 +46,13 @@ eq('填写 </gametxt>', pickTaggedBody('<gametxt>正文F</gametxt>', '</gametxt>
 eq('排除标签带尖括号', filterMessageText('<thought>t</thought>正文G', { exclude_tags: '<thought>' }), '正文G');
 eq('大小写不敏感', pickTaggedBody('<GameTxt>正文H</GameTxt>', 'gametxt'), '正文H');
 
+// 11. 多标签候选（默认 content,gametxt）
+eq('多标签-命中 content', pickTaggedBody('<content>正文I</content>', 'content,gametxt'), '正文I');
+eq('多标签-命中 gametxt', pickTaggedBody('<gametxt>正文J</gametxt>', 'content,gametxt'), '正文J');
+eq('多标签-按顺序取第一个', pickTaggedBody('<content>A</content><gametxt>B</gametxt>', 'content,gametxt'), 'A');
+eq('多标签-都没命中', pickTaggedBody('<other>X</other>', 'content,gametxt'), '');
+eq('多标签-排除仍生效', filterMessageText('<content><thought>t</thought>正文K</content>', { include_tag: 'content,gametxt', exclude_tags: 'thought' }), '正文K');
+
 console.table(cases);
 const failed = cases.filter((c) => !c.pass);
 console.log(failed.length === 0 ? 'HISTORY_FILTER_OK' : `HISTORY_FILTER_FAIL ${failed.length}`);

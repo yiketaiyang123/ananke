@@ -193,7 +193,7 @@ function configFormHtml(task) {
                 <input type="number" id="fw-task-history" min="0" max="50" value="${Number(task.historyTurns ?? 6)}"></div>
             <div class="fw-form-row"><label>最小回复长度（0=不检查）</label><input type="number" id="fw-task-minlen" min="0" value="${task.minReplyLength ?? 200}"></div>
             <div class="fw-form-row"><label>最大尝试次数（含截断/漏标签时的重发）</label><input type="number" id="fw-task-maxretries" min="1" value="${task.maxRetries ?? 3}"></div>
-            <div class="fw-form-row"><label>正文提取标签（只发该标签内的内容；留空=发全文；没有该标签的消息会被跳过）</label><input type="text" id="fw-task-include" value="${escapeHtml(task.include_tag || '')}" placeholder="填标签名，尖括号可省略，如 gametxt"></div>
+            <div class="fw-form-row"><label>正文提取标签（只发该标签内的内容；可填多个用逗号分隔；留空=发全文）</label><input type="text" id="fw-task-include" value="${escapeHtml(task.include_tag ?? dt.include)}" placeholder="默认 content,gametxt"></div>
             <div class="fw-form-row"><label>排除标签（提取后再剔除，逗号分隔，留空=不剔除）</label><input type="text" id="fw-task-exclude" value="${escapeHtml(task.exclude_tags ?? dt.exclude)}" placeholder="${escapeHtml(dt.exclude || 'thought,img,image')}"></div>
         </div>
     `;

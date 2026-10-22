@@ -53,25 +53,41 @@ export function stripTaggedBlocks(text, excludeTags) {
     return out;
 }
 
+/** 把「标签列表」拆成干净的标签名数组：content,gametxt / <content> / </gametxt> 都支持 */
+export function splitTagNames(input) {
+    return String(input || '')
+        .split(/[,，\s]+/)
+        .map(normalizeTagName)
+        .filter(Boolean);
+}
+
 /**
- * 只保留 <tag>…</tag> 内的内容。
- * 未配置标签 → 返回原文；配置了但消息里找不到该标签 → 返回空串（该条不发送），
+ * 只保留 <tag>…</tag> 内的内容，支持多个候选标签（按给定顺序，命中第一个有内容的）。
+ * 未配置标签 → 返回原文；其余情况都找不到 → 返回空串（该条不发送），
  * 避免把标签外的内容（系统提示、旁白、思维链）误发出去。
- * 标签名写法容错：gametxt / <gametxt> / </gametxt> 都识别。
+ * 标签名写法容错：content / <content> / </content> / content,gametxt 都识别。
  */
 export function pickTaggedBody(text, tag) {
     const src = String(text ?? '');
-    const t = normalizeTagName(tag);
-    if (!t) return src;
-    try {
-        const closed = src.match(new RegExp(`<${t}\\b[^>]*>([\\s\\S]*?)<\\/${t}>`, 'i'));
-        if (closed) return closed[1];
-        // 兜底：开标签存在但未闭合，取标签之后的全部
-        const open = src.match(new RegExp(`<${t}\\b[^>]*>([\\s\\S]*)$`, 'i'));
-        return open ? open[1] : '';
-    } catch {
-        return '';
+    const names = Array.isArray(tag)
+        ? tag.map(normalizeTagName).filter(Boolean)
+        : splitTagNames(tag);
+    if (!names.length) return src;
+
+    for (const t of names) {
+        try {
+            const closed = src.match(new RegExp(`<${t}\\b[^>]*>([\\s\\S]*?)<\\/${t}>`, 'i'));
+            if (closed && String(closed[1]).trim()) return closed[1];
+        } catch { /* 非法标签名忽略 */ }
     }
+    // 兜底：开标签存在但未闭合，取标签之后的全部
+    for (const t of names) {
+        try {
+            const open = src.match(new RegExp(`<${t}\\b[^>]*>([\\s\\S]*)$`, 'i'));
+            if (open) return open[1];
+        } catch { /* 非法标签名忽略 */ }
+    }
+    return '';
 }
 
 /**
