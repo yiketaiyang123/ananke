@@ -40,6 +40,12 @@ eq('逗号分隔', filterMessageText('<img>i</img><thought>t</thought>正文D', 
 // 9. 空结果判空
 eq('全空', filterMessageText('<thought>x</thought>', { exclude_tags: 'thought' }), '');
 
+// 10. 标签名写法容错：带尖括号 / 闭合标签
+eq('填写 <gametxt>', pickTaggedBody('<gametxt>正文E</gametxt>', '<gametxt>'), '正文E');
+eq('填写 </gametxt>', pickTaggedBody('<gametxt>正文F</gametxt>', '</gametxt>'), '正文F');
+eq('排除标签带尖括号', filterMessageText('<thought>t</thought>正文G', { exclude_tags: '<thought>' }), '正文G');
+eq('大小写不敏感', pickTaggedBody('<GameTxt>正文H</GameTxt>', 'gametxt'), '正文H');
+
 console.table(cases);
 const failed = cases.filter((c) => !c.pass);
 console.log(failed.length === 0 ? 'HISTORY_FILTER_OK' : `HISTORY_FILTER_FAIL ${failed.length}`);

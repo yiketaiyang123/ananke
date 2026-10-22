@@ -31,10 +31,18 @@ export function uid(prefix = 'fw') {
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** 规范化标签名：容忍 <gametxt>、</gametxt>、gametxt,foo 等写法，只取第一个干净标签名 */
+export function normalizeTagName(input) {
+    const raw = String(input || '').trim();
+    if (!raw) return '';
+    const first = raw.split(/[,，\s]/)[0].trim();
+    return first.replace(/^<\s*\/?\s*/, '').replace(/\s*\/?\s*>$/, '').trim();
+}
+
 /** 剔除正文里指定标签的内容（如 thought / img） */
 export function stripTaggedBlocks(text, excludeTags) {
     if (!excludeTags) return String(text ?? '');
-    const tags = String(excludeTags).split(/[,，]/).map((s) => s.trim()).filter(Boolean);
+    const tags = String(excludeTags).split(/[,，]/).map(normalizeTagName).filter(Boolean);
     let out = String(text ?? '');
     for (const tag of tags) {
         try {
@@ -49,10 +57,11 @@ export function stripTaggedBlocks(text, excludeTags) {
  * 只保留 <tag>…</tag> 内的内容。
  * 未配置标签 → 返回原文；配置了但消息里找不到该标签 → 返回空串（该条不发送），
  * 避免把标签外的内容（系统提示、旁白、思维链）误发出去。
+ * 标签名写法容错：gametxt / <gametxt> / </gametxt> 都识别。
  */
 export function pickTaggedBody(text, tag) {
     const src = String(text ?? '');
-    const t = String(tag || '').trim();
+    const t = normalizeTagName(tag);
     if (!t) return src;
     try {
         const closed = src.match(new RegExp(`<${t}\\b[^>]*>([\\s\\S]*?)<\\/${t}>`, 'i'));
