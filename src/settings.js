@@ -35,8 +35,10 @@ export const OLD_DEFAULT_FINAL_DIRECTIVE = `以下内容非用户输入，而是
 export const DEFAULT_EXCLUDE_TAGS = 'thought,img,image';
 
 /** 默认任务模板
- *  extractTags：标签摘取——从 AI 输出摘取这些 <标签> 内容，注入到用户输入后方
- *  storeTags：标签写入——从 AI 输出摘取这些 <标签> 内容，写入储存
+ *  extractTags：标签摘取——已内置（见 scheduler 的 TASK_INJECT_TAG），保留字段仅为兼容旧配置
+ *  storeTags：标签写入——解析时指定 store 标签，固定 'store'
+ *  include_tag：正文提取——只把消息里 <tag>…</tag> 的内容发给 AI；留空则发全文
+ *  exclude_tags：排除标签——从（提取后的）正文里剔除 thought/img 等
  */
 function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, extractTags, storeTags) {
     return {
@@ -45,19 +47,20 @@ function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, e
         enabled: true,
         stage: 0,                 // 0 = 所有阶段
         frequency,                // 每 N 轮调用一次
-        historyTurns,             // 携带最近 N 轮历史
+        historyTurns,             // 可见历史楼层（AI 消息条数；0 = 不带历史）
         minReplyLength,           // 低于此长度自动重试（0 = 不检查）
         maxRetries: 3,
-        extractTags: extractTags || '',   // 标签摘取（注入），逗号分隔
-        storeTags: storeTags || 'store',  // 标签写入（储存），逗号分隔
-        exclude_tags: DEFAULT_EXCLUDE_TAGS, // 排除标签（前文剧情剔除）
+        extractTags: extractTags || '',   // 已内置，保留兼容
+        storeTags: storeTags || 'store',  // 标签写入（储存）
+        include_tag: '',                  // 正文提取标签（留空 = 全文）
+        exclude_tags: DEFAULT_EXCLUDE_TAGS, // 排除标签（提取后再剔除）
         order: order || 1,        // 调取顺序：同值并行、不同值按升序顺序
         prompt_blocks: [],        // 对话块数组 [{ role: 'system'|'user'|'assistant', content: '' }]
     };
 }
 
 export const DEFAULT_SETTINGS = {
-    version: '1.10.4',
+    version: '1.10.5',
     enabled: true,            // 插件总开关（激活/关闭，全局）
     global_api: { mode: 'inherit', url: '', key: '', model: '' },
     apiPresets: [],          // API 预设快照 [{id,name,url,key,model}]
@@ -67,8 +70,8 @@ export const DEFAULT_SETTINGS = {
         defaultTask('task1_5', '1A 世界摘要', 0, 5, 200, 1, '', 'store'),
         defaultTask('task1', '1B 阶段规划', 20, 5, 200, 2, '', 'store'),
         defaultTask('task2', '2A 剧情引擎', 1, 10, 200, 3, '', 'store'),
-        defaultTask('task4', '2B 任务链生成', 0, 6, 200, 4, '', 'store'),
-        defaultTask('task2_5', '2C 地图生成', 0, 6, 200, 5, '', 'store'),
+        defaultTask('task4', '2B 任务链生成', 0, 1, 200, 4, '', 'store'),
+        defaultTask('task2_5', '2C 地图生成', 0, 1, 200, 5, '', 'store'),
         defaultTask('task3', '3 命运牌', 4, 6, 200, 6, '', 'store'),
     ],
 };
@@ -141,6 +144,13 @@ export function ensureDefaultSettings() {
         if (String(s.version) === '1.9.12') {
             const t25 = s.tasks.find((t) => t.id === 'task2_5');
             if (t25 && t25.extractTags === 'map_inject') t25.extractTags = '';
+        }
+        // v1.10.5：2B/2C 只需要当前楼层，把旧默认值 6 降到 1（用户自定义成其它值的不动）
+        if (String(s.version) === '1.10.4') {
+            for (const id of ['task4', 'task2_5']) {
+                const t = s.tasks.find((x) => x.id === id);
+                if (t && Number(t.historyTurns) === 6) t.historyTurns = 1;
+            }
         }
         s.version = DEFAULT_SETTINGS.version;
         saveSettingsPersist();

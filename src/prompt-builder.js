@@ -3,6 +3,7 @@
  * buildLore 异步读取角色卡 + 世界书（ctx.loadWorldInfo 活状态，内嵌 character_book 兜底）。
  */
 import { getChat, getContextObject } from './runtime.js';
+import { filterMessageText } from './utils.js';
 import {
     getStore,
     serializeTaskChain,
@@ -26,29 +27,25 @@ function lastUserMessage() {
     return '';
 }
 
-/** 最近 N 轮对话历史（角色名：内容） */
-/** 剔除正文里指定的标签内容（思维链/图片等） */
-function stripExcludedTags(text, excludeTags) {
-    if (!excludeTags) return text;
-    const tags = String(excludeTags).split(/[,，]/).map((s) => s.trim()).filter(Boolean);
-    let out = String(text ?? '');
-    for (const tag of tags) {
-        try {
-            out = out.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, 'gi'), '');
-            out = out.replace(new RegExp(`<${tag}\\b[^>]*\\/?>`, 'gi'), '');
-        } catch { /* 非法标签名忽略 */ }
-    }
-    return out;
+/** 历史楼层数：0 = 不带历史；非法值回落到 6 */
+function clampTurns(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return 6;
+    return Math.max(0, Math.min(50, Math.floor(v)));
 }
 
-function buildChatHistory(n, excludeTags) {
-    n = Number(n) || 6;
+function buildChatHistory(n, task) {
+    n = clampTurns(n);
+    if (n === 0) return '';
     const chat = getChat();
     return chat.slice(-n)
         .map((m) => {
+            const body = filterMessageText(m.mes, task);
+            if (!body.trim()) return '';
             const name = m?.is_user ? (m.name || '用户') : (m.name || '角色');
-            return `${name}：${stripExcludedTags(m.mes, excludeTags)}`;
+            return `${name}：${body}`;
         })
+        .filter(Boolean)
         .join('\n');
 }
 
@@ -139,13 +136,19 @@ async function buildLore() {
     return parts.join('\n\n');
 }
 
-/** 前文剧情：仅历史 AI 输出，不含用户输入（对应相似插件的 $7），并剔除排除标签 */
-function buildAiHistory(n, excludeTags) {
+/** 前文剧情：仅历史 AI 输出，不含用户输入；先按「正文提取标签」裁剪，再剔除排除标签 */
+function buildAiHistory(n, task) {
+    n = clampTurns(n);
+    if (n === 0) return '';
     const chat = getChat();
     return chat.slice(-(n * 2))
         .filter((m) => m && !m.is_user)
         .slice(-n)
-        .map((m) => `${m.name || '角色'}：${stripExcludedTags(m.mes, excludeTags)}`)
+        .map((m) => {
+            const body = filterMessageText(m.mes, task);
+            return body.trim() ? `${m.name || '角色'}：${body}` : '';
+        })
+        .filter(Boolean)
         .join('\n');
 }
 
@@ -212,14 +215,13 @@ function taskHistoryText() {
 async function collectVariables(task, extraVars = {}) {
     const store = getStore();
     const ctx = getContextObject();
-    const excludeTags = task?.exclude_tags || '';
     const vars = {
         '{{round}}': String(store.round),
         '{{game_time}}': `第${store.clock?.gameDay ?? 1}游戏日`,
         '{{current_stage}}': String(store.current_stage),
         '{{user_input}}': activeUserInput || lastUserMessage(),
-        '{{chat_history}}': buildChatHistory(task?.historyTurns || 6, excludeTags),
-        '{{ai_history}}': buildAiHistory(task?.historyTurns || 6, excludeTags),
+        '{{chat_history}}': buildChatHistory(task?.historyTurns, task),
+        '{{ai_history}}': buildAiHistory(task?.historyTurns, task),
         '{{user_persona}}': buildUserPersona(ctx),
         '{{character_card}}': buildCharacterCard(ctx),
         '{{world_info}}': await buildWorldInfoText(ctx),

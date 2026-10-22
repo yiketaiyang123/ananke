@@ -34,6 +34,7 @@ function defaultTagsFor(task) {
         extract: def?.extractTags ?? '',
         store: def?.storeTags ?? 'store',
         exclude: def?.exclude_tags ?? '',
+        include: def?.include_tag ?? '',
     };
 }
 
@@ -188,11 +189,12 @@ function configFormHtml(task) {
             <div class="fw-form-row"><label>阶段号（0=所有阶段）</label><input type="number" id="fw-task-stage" min="0" max="5" value="${task.stage ?? 0}"></div>
             <div class="fw-form-row"><label>调用频率（每 N 轮）</label><input type="number" id="fw-task-frequency" min="1" value="${task.frequency ?? 1}"></div>
             <div class="fw-form-row"><label>调取顺序（同值=一起调用，不同值=按顺序）</label><input type="number" id="fw-task-order" min="1" value="${task.order ?? 1}"></div>
-            <div class="fw-form-row"><label>历史对话记录（轮）</label>
-                <select id="fw-task-history">${[3, 5, 10, 15, 20].map((n) => `<option value="${n}" ${Number(task.historyTurns) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+            <div class="fw-form-row"><label>可见历史楼层（AI 消息条数；0=不带历史，1=只发当前楼层）</label>
+                <input type="number" id="fw-task-history" min="0" max="50" value="${Number(task.historyTurns ?? 6)}"></div>
             <div class="fw-form-row"><label>最小回复长度（0=不检查）</label><input type="number" id="fw-task-minlen" min="0" value="${task.minReplyLength ?? 200}"></div>
             <div class="fw-form-row"><label>最大尝试次数（含截断/漏标签时的重发）</label><input type="number" id="fw-task-maxretries" min="1" value="${task.maxRetries ?? 3}"></div>
-            <div class="fw-form-row"><label>排除标签（前文剧情剔除，逗号分隔）</label><input type="text" id="fw-task-exclude" value="${escapeHtml(task.exclude_tags || dt.exclude)}" placeholder="${escapeHtml(dt.exclude || 'thought,img,image')}"></div>
+            <div class="fw-form-row"><label>正文提取标签（只发 &lt;标签&gt; 内的内容；留空=发全文；取不到该标签的消息会被跳过）</label><input type="text" id="fw-task-include" value="${escapeHtml(task.include_tag || '')}" placeholder="如：gametxt"></div>
+            <div class="fw-form-row"><label>排除标签（提取后再剔除，逗号分隔，留空=不剔除）</label><input type="text" id="fw-task-exclude" value="${escapeHtml(task.exclude_tags ?? dt.exclude)}" placeholder="${escapeHtml(dt.exclude || 'thought,img,image')}"></div>
         </div>
     `;
 }
@@ -602,7 +604,10 @@ function saveCurrentTask(container) {
     task.stage = Number(val('#fw-task-stage')) || 0;
     task.frequency = Number(val('#fw-task-frequency')) || 1;
     task.order = Number(val('#fw-task-order')) || 1;
-    task.historyTurns = Number(val('#fw-task-history')) || 6;
+    task.historyTurns = (() => {
+        const v = Number(val('#fw-task-history'));
+        return Number.isFinite(v) && v >= 0 ? Math.min(50, Math.floor(v)) : 6;
+    })();
     task.minReplyLength = Number(val('#fw-task-minlen')) || 0;
     task.maxRetries = Number(val('#fw-task-maxretries')) || 3;
     const dt = defaultTagsFor(task);
@@ -610,7 +615,8 @@ function saveCurrentTask(container) {
     // 这里统一重置，避免旧配置里的值（如 map_inject）继续影响解析。
     task.extractTags = '';
     task.storeTags = 'store';
-    task.exclude_tags = val('#fw-task-exclude') || dt.exclude;
+    task.include_tag = String(val('#fw-task-include') || '').trim();
+    task.exclude_tags = val('#fw-task-exclude') ?? dt.exclude;
     task.prompt_blocks = structuredClone(editingBlocks);
 
     // 全局设置
