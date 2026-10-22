@@ -57,7 +57,7 @@ function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, e
 }
 
 export const DEFAULT_SETTINGS = {
-    version: '1.10.3',
+    version: '1.10.4',
     enabled: true,            // 插件总开关（激活/关闭，全局）
     global_api: { mode: 'inherit', url: '', key: '', model: '' },
     apiPresets: [],          // API 预设快照 [{id,name,url,key,model}]
@@ -66,10 +66,10 @@ export const DEFAULT_SETTINGS = {
     tasks: [
         defaultTask('task1_5', '1A 世界摘要', 0, 5, 200, 1, '', 'store'),
         defaultTask('task1', '1B 阶段规划', 20, 5, 200, 2, '', 'store'),
-        defaultTask('task2', '2A 剧情引擎', 1, 10, 200, 3, 'supplement', 'store'),
+        defaultTask('task2', '2A 剧情引擎', 1, 10, 200, 3, '', 'store'),
         defaultTask('task4', '2B 任务链生成', 0, 6, 200, 4, '', 'store'),
         defaultTask('task2_5', '2C 地图生成', 0, 6, 200, 5, '', 'store'),
-        defaultTask('task3', '3 命运牌', 4, 6, 200, 6, 'fate_inject', 'store'),
+        defaultTask('task3', '3 命运牌', 4, 6, 200, 6, '', 'store'),
     ],
 };
 

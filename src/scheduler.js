@@ -23,6 +23,9 @@ const TASK_INTERVAL = 1000; // 任务之间的发送间隔（毫秒），避免�
 const TASK_TEMPERATURE = { task1: 0.4, task1_5: 0.4, task2: 0.4, task4: 0.4, task2_5: 0.4, task3: 0.9 };
 // 各任务思考开关：结构化任务关闭（否则 reasoning token 吃掉输出预算、耗时成倍），命运牌保留自动
 const TASK_THINKING = { task1: 'disabled', task1_5: 'disabled', task2: 'disabled', task4: 'disabled', task2_5: 'disabled', task3: 'auto' };
+// 各任务从输出里摘取哪段内容作为「注入素材」：内置固定，不再依赖任务配置里的「标签摘取」。
+// 只有真正需要注入主 AI 的任务才有值；2B/2C 只产出存储数据，不注入。
+const TASK_INJECT_TAG = { task2: 'supplement', task3: 'fate_inject' };
 // 任务友好名（用于重试提示，如「剧情引擎错误，正在重新生成…」）
 const TASK_LABEL = {
     task1_5: '世界摘要',
@@ -534,7 +537,7 @@ async function runTask2(task) {
     recordTrace(task, messages);
     const output = await generateWithRetry(task, messages);
     recordTraceReceived(task, output);
-    const r = parseTask2Output(output, task.storeTags, task.extractTags);
+    const r = parseTask2Output(output, task.storeTags, TASK_INJECT_TAG.task2);
     const sigTxt = (r.signals && r.signals.length) ? r.signals.map((s) => s.type).join(' + ') : '';
     logInfo('task2', `✅ 剧情引擎已运行${sigTxt ? `（信号：${sigTxt}）` : ''}`);
     return r;
@@ -549,7 +552,7 @@ async function runTask4BySignal(signal, aiReply = '') {
     recordTrace(task, messages);
     const output = await generateWithRetry(task, messages);
     recordTraceReceived(task, output);
-    const r = parseTask4Output(output, task.storeTags, task.extractTags);
+    const r = parseTask4Output(output, task.storeTags, '');
     if (r.task_chain && r.task_chain.name) {
         getStore().task_chain = r.task_chain;
         saveStore();
@@ -572,7 +575,7 @@ async function runTask25BySignal(signal, aiReply = '') {
     recordTrace(task, messages);
     const output = await generateWithRetry(task, messages);
     recordTraceReceived(task, output);
-    const r = parseTask25Output(output, task.storeTags, task.extractTags);
+    const r = parseTask25Output(output, task.storeTags, '');
     if (r.map && r.map.raw) {
         getStore().map = r.map;
         getStore().scene_type = 'closed';
@@ -592,7 +595,7 @@ async function runTask3(task) {
     recordTrace(task, messages);
     const output = await generateWithRetry(task, messages);
     recordTraceReceived(task, output);
-    const r = parseTask3Output(output, task.storeTags, task.extractTags);
+    const r = parseTask3Output(output, task.storeTags, TASK_INJECT_TAG.task3);
     const store = getStore();
     if (r.pass) {
         recordSilent(store, r);
@@ -923,15 +926,9 @@ function validateStructure(task, output) {
         return '正式输出过短（疑似截断）';
     }
 
-    // 注入标签（摘取后注入主 AI）。Task 3 的 fate_inject 仅出牌时出现，不作硬性要求
-    if (task.id !== 'task3' && task.extractTags) {
-        const tags = String(task.extractTags).split(/[,，]/).map((s) => s.trim()).filter(Boolean);
-        for (const t of tags) {
-            if (!new RegExp(`<${t}\\b[^>]*>[\\s\\S]*?<\\/${t}>`, 'i').test(body)) {
-                return `缺少 <${t}> 标签`;
-            }
-        }
-    }
+    // 注入标签（supplement / fate_inject / map_inject）不再作为结构错误。
+    // 不同任务、不同版本可能不再输出某个标签，硬性校验会导致反复重试后仍然失败。
+    // 缺少注入内容时，注入环节自然为空，由任务提示词本身保证质量。
     return null;
 }
 

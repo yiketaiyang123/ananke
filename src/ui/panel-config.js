@@ -192,8 +192,6 @@ function configFormHtml(task) {
                 <select id="fw-task-history">${[3, 5, 10, 15, 20].map((n) => `<option value="${n}" ${Number(task.historyTurns) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
             <div class="fw-form-row"><label>最小回复长度（0=不检查）</label><input type="number" id="fw-task-minlen" min="0" value="${task.minReplyLength ?? 200}"></div>
             <div class="fw-form-row"><label>最大尝试次数（含截断/漏标签时的重发）</label><input type="number" id="fw-task-maxretries" min="1" value="${task.maxRetries ?? 3}"></div>
-            <div class="fw-form-row"><label>标签摘取（摘取&lt;标签&gt;内容注入用户输入后方，逗号分隔）</label><input type="text" id="fw-task-extract" value="${escapeHtml(task.extractTags || dt.extract)}" placeholder="${escapeHtml(dt.extract || 'supplement')}"></div>
-            <div class="fw-form-row"><label>标签写入（摘取&lt;标签&gt;内容写入储存，逗号分隔）</label><input type="text" id="fw-task-store" value="${escapeHtml(task.storeTags || dt.store)}" placeholder="${escapeHtml(dt.store || 'store')}"></div>
             <div class="fw-form-row"><label>排除标签（前文剧情剔除，逗号分隔）</label><input type="text" id="fw-task-exclude" value="${escapeHtml(task.exclude_tags || dt.exclude)}" placeholder="${escapeHtml(dt.exclude || 'thought,img,image')}"></div>
         </div>
     `;
@@ -608,8 +606,10 @@ function saveCurrentTask(container) {
     task.minReplyLength = Number(val('#fw-task-minlen')) || 0;
     task.maxRetries = Number(val('#fw-task-maxretries')) || 3;
     const dt = defaultTagsFor(task);
-    task.extractTags = val('#fw-task-extract') || dt.extract;
-    task.storeTags = val('#fw-task-store') || dt.store;
+    // 标签摘取 / 标签写入已内置（scheduler 的 TASK_INJECT_TAG），不再由面板配置；
+    // 这里统一重置，避免旧配置里的值（如 map_inject）继续影响解析。
+    task.extractTags = '';
+    task.storeTags = 'store';
     task.exclude_tags = val('#fw-task-exclude') || dt.exclude;
     task.prompt_blocks = structuredClone(editingBlocks);
 
