@@ -57,7 +57,7 @@ function defaultTask(id, name, frequency, historyTurns, minReplyLength, order, e
 }
 
 export const DEFAULT_SETTINGS = {
-    version: '1.9.12',
+    version: '1.10.0',
     enabled: true,            // 插件总开关（激活/关闭，全局）
     global_api: { mode: 'inherit', url: '', key: '', model: '' },
     apiPresets: [],          // API 预设快照 [{id,name,url,key,model}]
@@ -68,7 +68,7 @@ export const DEFAULT_SETTINGS = {
         defaultTask('task1', '1B 阶段规划', 20, 5, 200, 2, '', 'store'),
         defaultTask('task2', '2A 剧情引擎', 1, 10, 200, 3, 'supplement', 'store'),
         defaultTask('task4', '2B 任务链生成', 0, 6, 200, 4, '', 'store'),
-        defaultTask('task2_5', '2C 地图生成', 0, 6, 200, 5, 'map_inject', 'store'),
+        defaultTask('task2_5', '2C 地图生成', 0, 6, 200, 5, '', 'store'),
         defaultTask('task3', '3 命运牌', 4, 6, 200, 6, 'fate_inject', 'store'),
     ],
 };
@@ -136,6 +136,12 @@ export function ensureDefaultSettings() {
             if (bi >= 0) return 1;
             return 0;
         });
+        // v1.10.0 定向迁移：2C 地图改为「只存储不注入」，清空旧的 map_inject 提取。
+        // 只修这一项，其它用户自定义字段仍按原规则保留。
+        if (String(s.version) === '1.9.12') {
+            const t25 = s.tasks.find((t) => t.id === 'task2_5');
+            if (t25 && t25.extractTags === 'map_inject') t25.extractTags = '';
+        }
         s.version = DEFAULT_SETTINGS.version;
         saveSettingsPersist();
     }
