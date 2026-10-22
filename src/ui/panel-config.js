@@ -95,6 +95,10 @@ function buildHtml() {
     return `
         <div class="fw-panel">
             <div class="fw-task-count">当前任务数量：${settings.tasks.length}</div>
+            <div class="fw-toolbar">
+                <span class="fw-hint">插件版本 v${escapeHtml(DEFAULT_SETTINGS.version)}</span>
+                <button class="fw-btn fw-btn-mini" id="fw-plugin-update" type="button">检查更新</button>
+            </div>
             <div class="c-task-cards">${cards}</div>
             <div class="fw-toolbar">
                 <button class="fw-btn" id="fw-task-add">添加任务</button>
@@ -212,7 +216,60 @@ function blocksListHtml() {
         </div>`).join('');
 }
 
+/** 仓库信息：检查更新时比对 GitHub 上的 manifest 版本 */
+const REPO_MANIFEST_URL = 'https://raw.githubusercontent.com/yiketaiyang123/ananke/main/manifest.json';
+const REPO_EXTENSION_NAME = 'ananke';
+
+/**
+ * 检查并更新插件。
+ * 更新走酒馆自带的 /api/extensions/update（服务端执行 git pull），
+ * 因此插件必须以 git 方式安装（扩展面板填仓库地址安装），手动复制目录无法更新。
+ */
+async function runPluginUpdate(btn) {
+    const label = btn.textContent;
+    const current = DEFAULT_SETTINGS.version;
+    btn.disabled = true;
+    try {
+        // 1. 先尝试读取远端版本（失败不阻断，交给更新接口兜底）
+        let latest = '';
+        try {
+            const r = await fetch(`${REPO_MANIFEST_URL}?t=${Date.now()}`, { cache: 'no-store' });
+            if (r.ok) latest = String((await r.json())?.version || '');
+        } catch { /* 网络不可达时忽略 */ }
+
+        if (latest && latest === current) {
+            toastSuccess(`✅ 已是最新版本 v${current}`);
+            return;
+        }
+
+        // 2. 调用酒馆更新接口
+        btn.textContent = '更新中…';
+        const headers = (typeof window.getRequestHeaders === 'function')
+            ? window.getRequestHeaders()
+            : { 'Content-Type': 'application/json' };
+        const res = await fetch('/api/extensions/update', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ extensionName: REPO_EXTENSION_NAME, global: false }),
+        });
+        if (!res.ok) {
+            const msg = (await res.text().catch(() => '')) || `HTTP ${res.status}`;
+            throw new Error(msg);
+        }
+        toastSuccess(`✅ 已更新${latest ? ` 到 v${latest}` : ''}，请按 F5 刷新页面生效`);
+    } catch (e) {
+        toastError(`更新失败：${e?.message || e}。若插件不是用 git 安装的（而是手动复制），请在扩展面板重新安装一次。`);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = label;
+    }
+}
+
 function bind(container) {
+    // 插件更新（走酒馆自带的扩展更新接口，本质是 git pull；需以 git 方式安装）
+    const updateBtn = container.querySelector('#fw-plugin-update');
+    if (updateBtn) updateBtn.addEventListener('click', () => runPluginUpdate(updateBtn));
+
     // 任务卡片选择
     container.querySelectorAll('.c-task-card').forEach((card) => {
         card.addEventListener('click', () => {
